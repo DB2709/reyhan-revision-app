@@ -10,14 +10,22 @@ export default function SubjectPage({
 }) {
   const { slug } = use(params);
 
-  const topics = [
-    "organic-chemistry",
-    "chemistry-calculations",
-    "acid-salts-solubility",
-    "group-1-and-7",
-    "structure-and-bonding",
-    "chemical-analysis",
-  ];
+  const topicsBySubject: Record<string, string[]> = {
+    chemistry: [
+      "organic-chemistry",
+      "chemistry-calculations",
+      "acid-salts-solubility",
+      "group-1-and-7",
+      "structure-and-bonding",
+      "chemical-analysis",
+    ],
+    physics: ["waves"],
+    maths: [],
+    biology: [],
+    "sport-science": [],
+  };
+
+  const topics = topicsBySubject[slug] || [];
 
   return (
     <main className="min-h-screen p-8 space-y-6">
