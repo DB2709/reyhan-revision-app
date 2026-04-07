@@ -2,7 +2,7 @@
 
 import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { topicsData } from "@/data/topics";
+import { topicsData } from "../../../../data/topics";
 
 type Mode = "flashcards" | "short" | "exam";
 type FilterMode = "all" | "wrong";
@@ -32,7 +32,9 @@ export default function TopicPage({
   params: Promise<{ slug: string; topic: string }>;
 }) {
   const { slug, topic } = use(params);
-  const data = topicsData[topic];
+
+  const safeTopic = topic.trim().toLowerCase();
+  const data = topicsData[safeTopic];
 
   const [mode, setMode] = useState<Mode>("flashcards");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
@@ -40,7 +42,7 @@ export default function TopicPage({
   const [progress, setProgress] = useState<ProgressState>(defaultProgress);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  const storageKey = `topic-progress-${topic}`;
+  const storageKey = `topic-progress-${safeTopic}`;
 
   useEffect(() => {
     const saved = localStorage.getItem(storageKey);
@@ -94,7 +96,6 @@ export default function TopicPage({
     if (filteredIndexes.length === 0) return 0;
 
     const foundPosition = filteredIndexes.indexOf(savedIndexForMode);
-
     if (foundPosition !== -1) return foundPosition;
 
     return 0;
@@ -114,7 +115,11 @@ export default function TopicPage({
     }));
   }
 
-  function updateStatus(modeToUpdate: Mode, itemIndex: number, status: ItemStatus) {
+  function updateStatus(
+    modeToUpdate: Mode,
+    itemIndex: number,
+    status: ItemStatus
+  ) {
     setProgress((prev) => ({
       ...prev,
       statusByMode: {
@@ -207,7 +212,7 @@ export default function TopicPage({
         </Link>
 
         <h1 className="text-3xl font-bold capitalize mb-6">
-          {topic.replaceAll("-", " ")}
+          {safeTopic.replaceAll("-", " ")}
         </h1>
         <p>No content yet for this topic.</p>
       </main>
@@ -238,7 +243,7 @@ export default function TopicPage({
         </Link>
 
         <h1 className="text-3xl font-bold capitalize mb-2">
-          {topic.replaceAll("-", " ")}
+          {safeTopic.replaceAll("-", " ")}
         </h1>
         <p className="text-gray-600 mb-6">Study one step at a time</p>
 
@@ -356,7 +361,9 @@ export default function TopicPage({
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={goPrev}
-                  disabled={filteredIndexes.length === 0 || currentFilteredPosition === 0}
+                  disabled={
+                    filteredIndexes.length === 0 || currentFilteredPosition === 0
+                  }
                   className="rounded-xl border px-4 py-3 disabled:opacity-40"
                 >
                   Previous
@@ -376,9 +383,7 @@ export default function TopicPage({
           </div>
         ) : (
           <div className="rounded-2xl border border-gray-200 p-6">
-            <p className="text-gray-700">
-              No items found in this filter.
-            </p>
+            <p className="text-gray-700">No items found in this filter.</p>
           </div>
         )}
       </div>
@@ -490,9 +495,7 @@ function ExamQuestionView({
       </p>
       <h2 className="text-2xl font-semibold leading-snug">
         {item.question}{" "}
-        <span className="text-gray-500 font-medium">
-          ({item.marks} marks)
-        </span>
+        <span className="text-gray-500 font-medium">({item.marks} marks)</span>
       </h2>
       {showAnswer && (
         <div className="rounded-xl bg-purple-50 border border-purple-200 p-4">

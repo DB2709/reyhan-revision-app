@@ -19,7 +19,8 @@ export default function SubjectPage({
       "structure-and-bonding",
       "chemical-analysis",
     ],
-    physics: ["waves"],
+    physics: [
+      "waves"],
     maths: [],
     biology: [],
     "sport-science": [],
