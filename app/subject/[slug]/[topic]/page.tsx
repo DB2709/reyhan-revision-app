@@ -59,7 +59,8 @@ export default function TopicPage({
   const [showAnswer, setShowAnswer] = useState(false);
   const [progress, setProgress] = useState<ProgressState>(defaultProgress);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [showHippo, setShowHippo] = useState(false);
+
+  const [showHippoCelebration, setShowHippoCelebration] = useState(false);
 
   const storageKey = `topic-progress-${safeTopic}`;
 
@@ -108,10 +109,14 @@ export default function TopicPage({
   }, [progress, storageKey, isLoaded]);
 
   useEffect(() => {
-    if (!showHippo) return;
-    const timer = setTimeout(() => setShowHippo(false), 1800);
+    if (!showHippoCelebration) return;
+
+    const timer = setTimeout(() => {
+      setShowHippoCelebration(false);
+    }, 2200);
+
     return () => clearTimeout(timer);
-  }, [showHippo]);
+  }, [showHippoCelebration]);
 
   const allItems = useMemo(() => {
     if (!data) return [];
@@ -134,8 +139,11 @@ export default function TopicPage({
 
   const currentFilteredPosition = useMemo(() => {
     if (filteredIndexes.length === 0) return 0;
+
     const foundPosition = filteredIndexes.indexOf(savedIndexForMode);
-    return foundPosition !== -1 ? foundPosition : 0;
+    if (foundPosition !== -1) return foundPosition;
+
+    return 0;
   }, [filteredIndexes, savedIndexForMode]);
 
   const currentOriginalIndex = filteredIndexes[currentFilteredPosition];
@@ -156,11 +164,12 @@ export default function TopicPage({
     setMode(newMode);
     setFilterMode("all");
     setShowAnswer(false);
-    setShowHippo(false);
+    setShowHippoCelebration(false);
   }
 
   function goNext() {
     if (filteredIndexes.length === 0) return;
+
     const nextPosition = currentFilteredPosition + 1;
     if (nextPosition < filteredIndexes.length) {
       updateCurrentIndex(mode, filteredIndexes[nextPosition]);
@@ -170,6 +179,7 @@ export default function TopicPage({
 
   function goPrev() {
     if (filteredIndexes.length === 0) return;
+
     const prevPosition = currentFilteredPosition - 1;
     if (prevPosition >= 0) {
       updateCurrentIndex(mode, filteredIndexes[prevPosition]);
@@ -179,6 +189,8 @@ export default function TopicPage({
 
   function markItem(status: "correct" | "wrong") {
     if (currentOriginalIndex === undefined) return;
+
+    let shouldCelebrate = false;
 
     setProgress((prev) => {
       const previousStatus = prev.statusByMode[mode][currentOriginalIndex];
@@ -195,17 +207,16 @@ export default function TopicPage({
       }
 
       if (status === "correct") {
-        nextStreak = previousStatus === "correct" ? previousStreak : previousStreak + 1;
+        nextStreak =
+          previousStatus === "correct" ? previousStreak : previousStreak + 1;
       } else {
         nextStreak = 0;
       }
 
       const nextBest = Math.max(previousBest, nextStreak);
 
-      if (status === "correct" && nextStreak >= 2) {
-        setShowHippo(true);
-      } else {
-        setShowHippo(false);
+      if (status === "correct" && nextStreak >= 5) {
+        shouldCelebrate = true;
       }
 
       return {
@@ -231,6 +242,13 @@ export default function TopicPage({
         },
       };
     });
+
+    if (shouldCelebrate) {
+      setShowHippoCelebration(false);
+      setTimeout(() => setShowHippoCelebration(true), 50);
+    } else if (status === "wrong") {
+      setShowHippoCelebration(false);
+    }
 
     setShowAnswer(false);
 
@@ -281,7 +299,7 @@ export default function TopicPage({
     }));
     setFilterMode("all");
     setShowAnswer(false);
-    setShowHippo(false);
+    setShowHippoCelebration(false);
   }
 
   if (!data) {
@@ -323,11 +341,13 @@ export default function TopicPage({
   const bestStreak = progress.bestStreakByMode[mode];
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-white to-gray-50 px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-4xl">
+    <main className="min-h-screen bg-gradient-to-b from-white to-gray-50 px-4 py-8 md:px-8 overflow-hidden">
+      <div className="mx-auto max-w-4xl relative">
+        {showHippoCelebration && <Confetti />}
+
         <Link
           href={`/subject/${slug}`}
-          className="inline-block mb-6 text-sm border rounded-lg px-3 py-2 hover:bg-gray-100 transition"
+          className="inline-block mb-6 text-sm border rounded-lg px-3 py-2 hover:bg-gray-100 transition bg-white"
         >
           ← Back
         </Link>
@@ -340,20 +360,32 @@ export default function TopicPage({
             <p className="text-gray-600">Study one step at a time</p>
           </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-white shadow-sm px-4 py-3 min-w-[220px]">
-            <div className="text-sm text-gray-500 mb-1">Mascot mood</div>
-            <div className="flex items-center gap-3">
-              <div className={`text-4xl ${showHippo ? "animate-bounce" : ""}`}>
+          <div className="rounded-3xl border border-gray-200 bg-white shadow-sm px-5 py-4 min-w-[260px] relative">
+            {showHippoCelebration && (
+              <div className="absolute -top-16 right-0 md:right-4 bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-md max-w-[220px]">
+                <p className="text-sm font-semibold text-gray-900">
+                  Bravo Reyhan, le hippo poto !
+                </p>
+              </div>
+            )}
+
+            <div className="text-sm text-gray-500 mb-2">Mascot mood</div>
+            <div className="flex items-center gap-4">
+              <div
+                className={`text-6xl ${
+                  showHippoCelebration ? "animate-bounce" : ""
+                }`}
+              >
                 🦛
               </div>
               <div>
-                <p className="font-semibold text-gray-900">
-                  {showHippo ? "Hippo dance!" : "Ready to revise"}
+                <p className="font-semibold text-gray-900 text-lg">
+                  {showHippoCelebration ? "Hippo dance mode" : "Ready to revise"}
                 </p>
                 <p className="text-sm text-gray-600">
-                  {showHippo
-                    ? "2 correct in a row 🎉"
-                    : "Get 2 right in a row"}
+                  {showHippoCelebration
+                    ? "5 correct in a row 🎉"
+                    : "Get 5 right in a row"}
                 </p>
               </div>
             </div>
@@ -398,7 +430,7 @@ export default function TopicPage({
           />
           <button
             onClick={resetProgress}
-            className="rounded-xl px-4 py-3 text-sm font-medium border border-gray-300 bg-white hover:bg-gray-50"
+            className="rounded-2xl px-4 py-3 text-sm font-medium border border-gray-300 bg-white hover:bg-gray-50"
           >
             Reset progress
           </button>
@@ -508,6 +540,27 @@ export default function TopicPage({
         )}
       </div>
     </main>
+  );
+}
+
+function Confetti() {
+  const pieces = Array.from({ length: 24 }, (_, i) => i);
+
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden z-20">
+      {pieces.map((piece) => (
+        <span
+          key={piece}
+          className="absolute top-0 animate-confetti text-2xl"
+          style={{
+            left: `${(piece * 4) + Math.random() * 8}%`,
+            animationDelay: `${(piece % 6) * 0.08}s`,
+          }}
+        >
+          {piece % 4 === 0 ? "🎉" : piece % 4 === 1 ? "✨" : piece % 4 === 2 ? "⭐" : "🎊"}
+        </span>
+      ))}
+    </div>
   );
 }
 
