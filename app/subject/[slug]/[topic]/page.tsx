@@ -11,6 +11,9 @@ type ItemStatus = "correct" | "wrong" | null;
 type ProgressState = {
   currentIndexByMode: Record<Mode, number>;
   statusByMode: Record<Mode, Record<number, ItemStatus>>;
+  scoreByMode: Record<Mode, number>;
+  streakByMode: Record<Mode, number>;
+  bestStreakByMode: Record<Mode, number>;
 };
 
 const defaultProgress: ProgressState = {
@@ -23,6 +26,21 @@ const defaultProgress: ProgressState = {
     flashcards: {},
     short: {},
     exam: {},
+  },
+  scoreByMode: {
+    flashcards: 0,
+    short: 0,
+    exam: 0,
+  },
+  streakByMode: {
+    flashcards: 0,
+    short: 0,
+    exam: 0,
+  },
+  bestStreakByMode: {
+    flashcards: 0,
+    short: 0,
+    exam: 0,
   },
 };
 
@@ -41,6 +59,7 @@ export default function TopicPage({
   const [showAnswer, setShowAnswer] = useState(false);
   const [progress, setProgress] = useState<ProgressState>(defaultProgress);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [showHippo, setShowHippo] = useState(false);
 
   const storageKey = `topic-progress-${safeTopic}`;
 
@@ -48,7 +67,7 @@ export default function TopicPage({
     const saved = localStorage.getItem(storageKey);
     if (saved) {
       try {
-        const parsed = JSON.parse(saved) as ProgressState;
+        const parsed = JSON.parse(saved) as Partial<ProgressState>;
         setProgress({
           currentIndexByMode: {
             flashcards: parsed.currentIndexByMode?.flashcards ?? 0,
@@ -59,6 +78,21 @@ export default function TopicPage({
             flashcards: parsed.statusByMode?.flashcards ?? {},
             short: parsed.statusByMode?.short ?? {},
             exam: parsed.statusByMode?.exam ?? {},
+          },
+          scoreByMode: {
+            flashcards: parsed.scoreByMode?.flashcards ?? 0,
+            short: parsed.scoreByMode?.short ?? 0,
+            exam: parsed.scoreByMode?.exam ?? 0,
+          },
+          streakByMode: {
+            flashcards: parsed.streakByMode?.flashcards ?? 0,
+            short: parsed.streakByMode?.short ?? 0,
+            exam: parsed.streakByMode?.exam ?? 0,
+          },
+          bestStreakByMode: {
+            flashcards: parsed.bestStreakByMode?.flashcards ?? 0,
+            short: parsed.bestStreakByMode?.short ?? 0,
+            exam: parsed.bestStreakByMode?.exam ?? 0,
           },
         });
       } catch {
@@ -72,6 +106,12 @@ export default function TopicPage({
     if (!isLoaded) return;
     localStorage.setItem(storageKey, JSON.stringify(progress));
   }, [progress, storageKey, isLoaded]);
+
+  useEffect(() => {
+    if (!showHippo) return;
+    const timer = setTimeout(() => setShowHippo(false), 1800);
+    return () => clearTimeout(timer);
+  }, [showHippo]);
 
   const allItems = useMemo(() => {
     if (!data) return [];
@@ -94,11 +134,8 @@ export default function TopicPage({
 
   const currentFilteredPosition = useMemo(() => {
     if (filteredIndexes.length === 0) return 0;
-
     const foundPosition = filteredIndexes.indexOf(savedIndexForMode);
-    if (foundPosition !== -1) return foundPosition;
-
-    return 0;
+    return foundPosition !== -1 ? foundPosition : 0;
   }, [filteredIndexes, savedIndexForMode]);
 
   const currentOriginalIndex = filteredIndexes[currentFilteredPosition];
@@ -115,32 +152,15 @@ export default function TopicPage({
     }));
   }
 
-  function updateStatus(
-    modeToUpdate: Mode,
-    itemIndex: number,
-    status: ItemStatus
-  ) {
-    setProgress((prev) => ({
-      ...prev,
-      statusByMode: {
-        ...prev.statusByMode,
-        [modeToUpdate]: {
-          ...prev.statusByMode[modeToUpdate],
-          [itemIndex]: status,
-        },
-      },
-    }));
-  }
-
   function switchMode(newMode: Mode) {
     setMode(newMode);
     setFilterMode("all");
     setShowAnswer(false);
+    setShowHippo(false);
   }
 
   function goNext() {
     if (filteredIndexes.length === 0) return;
-
     const nextPosition = currentFilteredPosition + 1;
     if (nextPosition < filteredIndexes.length) {
       updateCurrentIndex(mode, filteredIndexes[nextPosition]);
@@ -150,7 +170,6 @@ export default function TopicPage({
 
   function goPrev() {
     if (filteredIndexes.length === 0) return;
-
     const prevPosition = currentFilteredPosition - 1;
     if (prevPosition >= 0) {
       updateCurrentIndex(mode, filteredIndexes[prevPosition]);
@@ -161,7 +180,58 @@ export default function TopicPage({
   function markItem(status: "correct" | "wrong") {
     if (currentOriginalIndex === undefined) return;
 
-    updateStatus(mode, currentOriginalIndex, status);
+    setProgress((prev) => {
+      const previousStatus = prev.statusByMode[mode][currentOriginalIndex];
+      const previousScore = prev.scoreByMode[mode];
+      const previousStreak = prev.streakByMode[mode];
+      const previousBest = prev.bestStreakByMode[mode];
+
+      let nextScore = previousScore;
+      let nextStreak = previousStreak;
+
+      if (previousStatus !== status) {
+        if (previousStatus === "correct") nextScore -= 1;
+        if (status === "correct") nextScore += 1;
+      }
+
+      if (status === "correct") {
+        nextStreak = previousStatus === "correct" ? previousStreak : previousStreak + 1;
+      } else {
+        nextStreak = 0;
+      }
+
+      const nextBest = Math.max(previousBest, nextStreak);
+
+      if (status === "correct" && nextStreak >= 2) {
+        setShowHippo(true);
+      } else {
+        setShowHippo(false);
+      }
+
+      return {
+        ...prev,
+        statusByMode: {
+          ...prev.statusByMode,
+          [mode]: {
+            ...prev.statusByMode[mode],
+            [currentOriginalIndex]: status,
+          },
+        },
+        scoreByMode: {
+          ...prev.scoreByMode,
+          [mode]: Math.max(0, nextScore),
+        },
+        streakByMode: {
+          ...prev.streakByMode,
+          [mode]: nextStreak,
+        },
+        bestStreakByMode: {
+          ...prev.bestStreakByMode,
+          [mode]: nextBest,
+        },
+      };
+    });
+
     setShowAnswer(false);
 
     if (filterMode === "wrong" && status === "correct") {
@@ -185,7 +255,7 @@ export default function TopicPage({
     }
   }
 
-  function resetWrongAnswers() {
+  function resetProgress() {
     setProgress((prev) => ({
       ...prev,
       statusByMode: {
@@ -196,9 +266,22 @@ export default function TopicPage({
         ...prev.currentIndexByMode,
         [mode]: 0,
       },
+      scoreByMode: {
+        ...prev.scoreByMode,
+        [mode]: 0,
+      },
+      streakByMode: {
+        ...prev.streakByMode,
+        [mode]: 0,
+      },
+      bestStreakByMode: {
+        ...prev.bestStreakByMode,
+        [mode]: 0,
+      },
     }));
     setFilterMode("all");
     setShowAnswer(false);
+    setShowHippo(false);
   }
 
   if (!data) {
@@ -210,7 +293,6 @@ export default function TopicPage({
         >
           ← Back
         </Link>
-
         <h1 className="text-3xl font-bold capitalize mb-6">
           {safeTopic.replaceAll("-", " ")}
         </h1>
@@ -232,9 +314,17 @@ export default function TopicPage({
     (value) => value === "correct"
   ).length;
 
+  const totalAnswered = correctCount + wrongCount;
+  const accuracy =
+    totalAnswered > 0 ? Math.round((correctCount / totalAnswered) * 100) : 0;
+
+  const currentScore = progress.scoreByMode[mode];
+  const currentStreak = progress.streakByMode[mode];
+  const bestStreak = progress.bestStreakByMode[mode];
+
   return (
-    <main className="min-h-screen bg-white px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-3xl">
+    <main className="min-h-screen bg-gradient-to-b from-white to-gray-50 px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-4xl">
         <Link
           href={`/subject/${slug}`}
           className="inline-block mb-6 text-sm border rounded-lg px-3 py-2 hover:bg-gray-100 transition"
@@ -242,10 +332,40 @@ export default function TopicPage({
           ← Back
         </Link>
 
-        <h1 className="text-3xl font-bold capitalize mb-2">
-          {safeTopic.replaceAll("-", " ")}
-        </h1>
-        <p className="text-gray-600 mb-6">Study one step at a time</p>
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h1 className="text-4xl font-bold capitalize mb-2">
+              {safeTopic.replaceAll("-", " ")}
+            </h1>
+            <p className="text-gray-600">Study one step at a time</p>
+          </div>
+
+          <div className="rounded-2xl border border-gray-200 bg-white shadow-sm px-4 py-3 min-w-[220px]">
+            <div className="text-sm text-gray-500 mb-1">Mascot mood</div>
+            <div className="flex items-center gap-3">
+              <div className={`text-4xl ${showHippo ? "animate-bounce" : ""}`}>
+                🦛
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900">
+                  {showHippo ? "Hippo dance!" : "Ready to revise"}
+                </p>
+                <p className="text-sm text-gray-600">
+                  {showHippo
+                    ? "2 correct in a row 🎉"
+                    : "Get 2 right in a row"}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-4 mb-6">
+          <StatCard label="Score" value={String(currentScore)} tone="yellow" />
+          <StatCard label="Accuracy" value={`${accuracy}%`} tone="green" />
+          <StatCard label="Streak" value={String(currentStreak)} tone="blue" />
+          <StatCard label="Best streak" value={String(bestStreak)} tone="purple" />
+        </div>
 
         <div className="grid grid-cols-3 gap-2 mb-6">
           <TabButton
@@ -277,15 +397,15 @@ export default function TopicPage({
             label={`Wrong only (${wrongCount})`}
           />
           <button
-            onClick={resetWrongAnswers}
-            className="rounded-xl px-4 py-3 text-sm font-medium border border-gray-300"
+            onClick={resetProgress}
+            className="rounded-xl px-4 py-3 text-sm font-medium border border-gray-300 bg-white hover:bg-gray-50"
           >
             Reset progress
           </button>
         </div>
 
         <div className="flex items-center gap-4 mb-4 text-sm text-gray-600 flex-wrap">
-          <span className="capitalize">{mode}</span>
+          <span className="capitalize font-medium">{mode}</span>
           <span>Correct: {correctCount}</span>
           <span>Wrong: {wrongCount}</span>
           <span>
@@ -296,7 +416,7 @@ export default function TopicPage({
         </div>
 
         {currentItem ? (
-          <div className="rounded-2xl border border-gray-200 shadow-sm p-6 md:p-8 min-h-[360px] flex flex-col justify-between">
+          <div className="rounded-3xl border border-gray-200 bg-white shadow-md p-6 md:p-8 min-h-[380px] flex flex-col justify-between">
             <div>
               {mode === "flashcards" && (
                 <FlashcardView
@@ -329,7 +449,7 @@ export default function TopicPage({
             <div className="mt-8 flex flex-col gap-3">
               <button
                 onClick={() => setShowAnswer(!showAnswer)}
-                className="rounded-xl bg-black text-white px-4 py-3 font-medium"
+                className="rounded-2xl bg-black text-white px-4 py-3 font-medium hover:opacity-90"
               >
                 {showAnswer ? "Hide answer" : "Show answer"}
               </button>
@@ -337,24 +457,24 @@ export default function TopicPage({
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => markItem("correct")}
-                  className={`rounded-xl px-4 py-3 font-medium border ${
+                  className={`rounded-2xl px-4 py-3 font-medium border transition ${
                     currentStatus === "correct"
                       ? "bg-green-100 border-green-400"
-                      : "border-gray-300"
+                      : "bg-white border-gray-300 hover:bg-green-50"
                   }`}
                 >
-                  Correct
+                  ✅ Correct
                 </button>
 
                 <button
                   onClick={() => markItem("wrong")}
-                  className={`rounded-xl px-4 py-3 font-medium border ${
+                  className={`rounded-2xl px-4 py-3 font-medium border transition ${
                     currentStatus === "wrong"
                       ? "bg-red-100 border-red-400"
-                      : "border-gray-300"
+                      : "bg-white border-gray-300 hover:bg-red-50"
                   }`}
                 >
-                  Wrong
+                  ❌ Wrong
                 </button>
               </div>
 
@@ -364,7 +484,7 @@ export default function TopicPage({
                   disabled={
                     filteredIndexes.length === 0 || currentFilteredPosition === 0
                   }
-                  className="rounded-xl border px-4 py-3 disabled:opacity-40"
+                  className="rounded-2xl border px-4 py-3 disabled:opacity-40 bg-white"
                 >
                   Previous
                 </button>
@@ -374,7 +494,7 @@ export default function TopicPage({
                     filteredIndexes.length === 0 ||
                     currentFilteredPosition === filteredIndexes.length - 1
                   }
-                  className="rounded-xl border px-4 py-3 disabled:opacity-40"
+                  className="rounded-2xl border px-4 py-3 disabled:opacity-40 bg-white"
                 >
                   Next
                 </button>
@@ -382,12 +502,36 @@ export default function TopicPage({
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl border border-gray-200 p-6">
+          <div className="rounded-3xl border border-gray-200 bg-white p-6">
             <p className="text-gray-700">No items found in this filter.</p>
           </div>
         )}
       </div>
     </main>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "yellow" | "green" | "blue" | "purple";
+}) {
+  const tones = {
+    yellow: "bg-yellow-50 border-yellow-200",
+    green: "bg-green-50 border-green-200",
+    blue: "bg-blue-50 border-blue-200",
+    purple: "bg-purple-50 border-purple-200",
+  };
+
+  return (
+    <div className={`rounded-2xl border px-4 py-4 shadow-sm ${tones[tone]}`}>
+      <p className="text-sm text-gray-600 mb-1">{label}</p>
+      <p className="text-2xl font-bold text-gray-900">{value}</p>
+    </div>
   );
 }
 
@@ -403,10 +547,10 @@ function TabButton({
   return (
     <button
       onClick={onClick}
-      className={`rounded-xl px-4 py-3 text-sm font-medium border transition ${
+      className={`rounded-2xl px-4 py-3 text-sm font-medium border transition ${
         active
           ? "bg-black text-white border-black"
-          : "bg-white text-black border-gray-300"
+          : "bg-white text-black border-gray-300 hover:bg-gray-50"
       }`}
     >
       {label}
@@ -426,10 +570,10 @@ function FilterButton({
   return (
     <button
       onClick={onClick}
-      className={`rounded-xl px-4 py-3 text-sm font-medium border transition ${
+      className={`rounded-2xl px-4 py-3 text-sm font-medium border transition ${
         active
           ? "bg-gray-900 text-white border-gray-900"
-          : "bg-white text-black border-gray-300"
+          : "bg-white text-black border-gray-300 hover:bg-gray-50"
       }`}
     >
       {label}
@@ -446,13 +590,13 @@ function FlashcardView({
 }) {
   return (
     <div className="space-y-6">
-      <p className="text-sm uppercase tracking-wide text-gray-500">
-        Flashcard
-      </p>
-      <h2 className="text-2xl font-semibold leading-snug">{item.question}</h2>
+      <p className="text-sm uppercase tracking-wide text-gray-500">Flashcard</p>
+      <h2 className="text-3xl font-semibold leading-snug text-gray-900">
+        {item.question}
+      </h2>
       {showAnswer && (
-        <div className="rounded-xl bg-green-50 border border-green-200 p-4">
-          <p className="text-green-800 text-lg">{item.answer}</p>
+        <div className="rounded-2xl bg-green-50 border border-green-200 p-5">
+          <p className="text-green-900 text-xl">{item.answer}</p>
         </div>
       )}
     </div>
@@ -471,10 +615,12 @@ function ShortQuestionView({
       <p className="text-sm uppercase tracking-wide text-gray-500">
         Quick Question
       </p>
-      <h2 className="text-2xl font-semibold leading-snug">{item.question}</h2>
+      <h2 className="text-3xl font-semibold leading-snug text-gray-900">
+        {item.question}
+      </h2>
       {showAnswer && (
-        <div className="rounded-xl bg-blue-50 border border-blue-200 p-4">
-          <p className="text-blue-900 text-lg">{item.answer}</p>
+        <div className="rounded-2xl bg-blue-50 border border-blue-200 p-5">
+          <p className="text-blue-900 text-xl">{item.answer}</p>
         </div>
       )}
     </div>
@@ -493,12 +639,14 @@ function ExamQuestionView({
       <p className="text-sm uppercase tracking-wide text-gray-500">
         Exam Question
       </p>
-      <h2 className="text-2xl font-semibold leading-snug">
+      <h2 className="text-3xl font-semibold leading-snug text-gray-900">
         {item.question}{" "}
-        <span className="text-gray-500 font-medium">({item.marks} marks)</span>
+        <span className="text-gray-500 font-medium text-xl">
+          ({item.marks} marks)
+        </span>
       </h2>
       {showAnswer && (
-        <div className="rounded-xl bg-purple-50 border border-purple-200 p-4">
+        <div className="rounded-2xl bg-purple-50 border border-purple-200 p-5">
           <p className="font-medium mb-3 text-purple-900">Mark scheme</p>
           <ul className="space-y-2">
             {item.markScheme.map((point, i) => (
