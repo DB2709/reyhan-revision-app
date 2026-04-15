@@ -22,6 +22,7 @@ export default function SubjectPage({
     physics: [
       "waves",
       "forces",
+      "electricity",
     ],
     maths: [],
     biology: [],
