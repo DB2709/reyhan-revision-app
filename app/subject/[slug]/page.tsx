@@ -28,6 +28,7 @@ export default function SubjectPage({
     biology: [
   "photosynthesis",
   "digestion",
+  "transport",
 ],
     "sport-science": [],
   };
