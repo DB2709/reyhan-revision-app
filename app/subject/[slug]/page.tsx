@@ -20,7 +20,8 @@ export default function SubjectPage({
       "chemical-analysis",
     ],
     physics: [
-      "waves"],
+      "waves",
+      "forces",]
     maths: [],
     biology: [],
     "sport-science": [],
