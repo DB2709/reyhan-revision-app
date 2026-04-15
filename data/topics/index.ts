@@ -7,6 +7,7 @@ import { group1And7 } from "./group-1-and-7";
 import { structureAndBonding } from "./structure-and-bonding";
 import { chemicalAnalysis } from "./chemical-analysis";
 import { waves } from "./waves";
+import { forces } from "./forces";
 export const topicsData: Record<string, TopicContent> = {
   "organic-chemistry": organicChemistry,
   "chemistry-calculations": chemistryCalculations,
@@ -15,4 +16,5 @@ export const topicsData: Record<string, TopicContent> = {
   "structure-and-bonding": structureAndBonding,
   "chemical-analysis": chemicalAnalysis,
   "waves": waves,
+  "forces": forces,
 };
