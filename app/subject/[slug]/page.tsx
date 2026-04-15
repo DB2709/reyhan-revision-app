@@ -21,7 +21,8 @@ export default function SubjectPage({
     ],
     physics: [
       "waves",
-      "forces",]
+      "forces",
+    ],
     maths: [],
     biology: [],
     "sport-science": [],
@@ -31,8 +32,6 @@ export default function SubjectPage({
 
   return (
     <main className="min-h-screen p-8 space-y-6">
-
-      {/* 🔙 BACK BUTTON */}
       <Link
         href="/"
         className="inline-block text-sm border rounded-lg px-3 py-2 hover:bg-gray-100 transition"
@@ -40,12 +39,10 @@ export default function SubjectPage({
         ← Back to subjects
       </Link>
 
-      {/* 🧠 TITLE */}
       <h1 className="text-3xl font-bold capitalize">
         {slug.replaceAll("-", " ")}
       </h1>
 
-      {/* 📚 TOPICS */}
       <div className="grid gap-4">
         {topics.length === 0 ? (
           <p className="text-gray-500">No topics yet</p>
