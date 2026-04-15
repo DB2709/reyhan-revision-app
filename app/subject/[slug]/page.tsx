@@ -25,7 +25,9 @@ export default function SubjectPage({
       "electricity",
     ],
     maths: [],
-    biology: [],
+    biology: [
+  "photosynthesis",
+],
     "sport-science": [],
   };
 
