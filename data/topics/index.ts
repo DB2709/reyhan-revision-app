@@ -10,6 +10,7 @@ import { waves } from "./waves";
 import { forces } from "./forces";
 import { electricity } from "./electricity";
 import { photosynthesis } from "./photosynthesis";
+import { digestion } from "./digestion";
 export const topicsData: Record<string, TopicContent> = {
   "organic-chemistry": organicChemistry,
   "chemistry-calculations": chemistryCalculations,
@@ -21,4 +22,5 @@ export const topicsData: Record<string, TopicContent> = {
   "forces": forces,
   "electricity": electricity,
   "photosynthesis": photosynthesis,
+  "digestion": digestion,
 };

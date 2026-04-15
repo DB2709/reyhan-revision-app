@@ -27,6 +27,7 @@ export default function SubjectPage({
     maths: [],
     biology: [
   "photosynthesis",
+  "digestion",
 ],
     "sport-science": [],
   };
